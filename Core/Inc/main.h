@@ -37,6 +37,8 @@ extern "C" {
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
 
+    extern uint32_t key __attribute__((section(".key")));
+
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/

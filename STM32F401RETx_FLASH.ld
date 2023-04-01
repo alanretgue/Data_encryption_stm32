@@ -58,11 +58,16 @@ _estack = ORIGIN(RAM) + LENGTH(RAM);    /* end of RAM */
 _Min_Heap_Size = 0x200;      /* required amount of heap  */
 _Min_Stack_Size = 0x400; /* required amount of stack */
 
+ISR_size = 16K;
+DATA_size = 16K;
+
 /* Specify the memory areas */
 MEMORY
 {
 RAM (xrw)      : ORIGIN = 0x20000000, LENGTH = 96K
-FLASH (rx)      : ORIGIN = 0x8000000, LENGTH = 512K
+ISR (rx)      : ORIGIN = 0x8000000, LENGTH = ISR_size
+DATA (rx)      : ORIGIN = 0x8000000 + ISR_size, LENGTH = DATA_size
+FLASH (rx)      : ORIGIN = 0x8000000 + ISR_size + DATA_size, LENGTH = 512K - ISR_size - DATA_size
 }
 
 /* Define output sections */
@@ -74,7 +79,14 @@ SECTIONS
     . = ALIGN(4);
     KEEP(*(.isr_vector)) /* Startup code */
     . = ALIGN(4);
-  } >FLASH
+  } >ISR
+
+  .key :
+  {
+    . = ALIGN(4);
+    KEEP(*(.key)) /* Startup code */
+    . = ALIGN(4);
+  } >DATA
 
   /* The program code and other data goes into FLASH */
   .text :
