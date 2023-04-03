@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "mbedtls.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -100,6 +101,7 @@ int main(void)
   MX_DMA_Init();
   MX_TIM10_Init();
   MX_USART2_UART_Init();
+  MX_MBEDTLS_Init();
   /* USER CODE BEGIN 2 */
   HAL_TIM_Base_Start_IT(&htim10);
 
@@ -107,7 +109,7 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  printf("hello it's %lu at %x\r\n", key, (uint32_t)&key);
+  // printf("hello it's %lu at %x\r\n", key, (uint32_t)&key);
   while (1)
   {
     /* USER CODE END WHILE */

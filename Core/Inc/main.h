@@ -38,6 +38,7 @@ extern "C" {
 /* USER CODE BEGIN ET */
 
     extern uint32_t key __attribute__((section(".key")));
+    extern UART_HandleTypeDef huart2;
 
 /* USER CODE END ET */
 
