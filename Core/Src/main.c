@@ -51,7 +51,10 @@ DMA_HandleTypeDef hdma_usart2_tx;
 
 /* USER CODE BEGIN PV */
 
-uint32_t key = 42;
+Key key = {
+    .generated = 0,
+    .value = { 0 },
+};
 
 /* USER CODE END PV */
 
