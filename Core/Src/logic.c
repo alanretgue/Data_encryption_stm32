@@ -106,7 +106,10 @@ int custom_poll( void *data,
     ((void) output);
     *olen = sizeof(len);
 
-    return ((HAL_ADC_GetValue(&hadc1) * timer_count * HAL_GetTick()) << 5) + 634123;
+    int32_t val1 = HAL_ADC_GetValue(&hadc1) >> 2;
+    int32_t val2 = HAL_GetTick();
+    int32_t val3 = millis;
+    return (val1 ^ val2) | (val3 << 3);
 }
 
 int generate_key() {
@@ -121,7 +124,7 @@ int generate_key() {
         .value = { 0 },
     };
 
-    char *pers = "Les loutres controleront le monde!!!";
+    char *pers = "Les loutres controleront le monde et les pates c'est bon";
     int ret;
 
     mbedtls_entropy_init(&entropy);
