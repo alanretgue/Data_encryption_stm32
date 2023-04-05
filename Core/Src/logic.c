@@ -1,6 +1,10 @@
 #include "logic.h"
 #include "main.h"
+#include "stm32f4xx_hal.h"
+#include "stm32f4xx_hal_adc.h"
+#include "stm32f4xx_hal_cortex.h"
 #include "stm32f4xx_hal_uart.h"
+#include <stdint.h>
 #include <stdio.h>
 
 #define FREQ 4
@@ -17,6 +21,8 @@ Header header = {
 };
 
 uint8_t test_buff[2] = { 0 };
+
+uint64_t millis = 0;
 
 uint8_t idx = 0;
 uint8_t state = 1;
@@ -81,7 +87,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
             HAL_UART_Receive_DMA(&huart2, recieved_data /* + idx *  BUFFER_SIZE*/, size);
         } else if ((header.flags & INIT) == 1) {
             unsigned char res = '0' + (unsigned char)generate_key();
-            HAL_UART_Transmit_DMA(&huart2, &res, 1);
+            HAL_UART_Transmit_DMA(&huart2, &res, 33);
         } else {
             HAL_UART_Transmit_DMA(&huart2, recieved_data, size);
             if ((header.flags & END) == 0) {
@@ -91,6 +97,16 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
             }
         }
     }
+}
+
+int custom_poll( void *data,
+                    unsigned char *output, size_t len, size_t *olen )
+{
+    ((void) data);
+    ((void) output);
+    *olen = sizeof(len);
+
+    return ((HAL_ADC_GetValue(&hadc1) * timer_count * HAL_GetTick()) << 5) + 634123;
 }
 
 int generate_key() {
@@ -111,6 +127,8 @@ int generate_key() {
     mbedtls_entropy_init(&entropy);
     mbedtls_ctr_drbg_init(&ctr_drbg);
 
+    mbedtls_entropy_add_source(&entropy, custom_poll, NULL, 1, MBEDTLS_ENTROPY_SOURCE_STRONG);
+
     if((ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy,
                     (unsigned char *) pers, strlen(pers))) != 0) {
         return ERROR_SEED;
@@ -120,6 +138,10 @@ int generate_key() {
         return ERROR_RANDOM;
     }
 
-    return write_flash(&tmp_key);
+    // return write_flash(&tmp_key);
 
+    HAL_UART_Transmit_DMA(&huart2, (uint8_t *)(tmp_key.value), sizeof(Key));
+    return SUCCESS;
 }
+
+void SYSTICK_Handler(void) { millis++; }

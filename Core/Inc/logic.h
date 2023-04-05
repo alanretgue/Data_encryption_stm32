@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdint.h>
 #include "main.h"
 #include "mbedtls/entropy.h"
 #include "mbedtls/ctr_drbg.h"
@@ -31,6 +32,12 @@ typedef struct {
 } Key;
 
 extern Key key __attribute__((section(".key")));
+
+extern uint64_t millis;
+
+extern ADC_HandleTypeDef hadc1;
+
+void SYSTICK_Handler(void);
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim);
