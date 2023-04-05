@@ -11,12 +11,16 @@ const int ENABLE_END = FREQ * TIME;
 int enable = 0;
 uint32_t timer_count = 0;
 
-Header header;
+Header header = {
+    .flags = 0,
+    .length = 0,
+};
+
 uint8_t idx = 0;
 uint8_t state = 1;
 uint8_t size = 1;
 uint8_t recv = 1;
-char recieved_data[2 * BUFFER_SIZE] = { 'a' };
+unsigned char recieved_data[2 * BUFFER_SIZE] = { 'a' };
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
     if (!enable) {
