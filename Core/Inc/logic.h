@@ -2,13 +2,14 @@
 
 #include <stdint.h>
 #include "main.h"
+#include "mbedtls/aes.h"
+#include "mbedtls/cipher.h"
 #include "mbedtls/entropy.h"
 #include "mbedtls/ctr_drbg.h"
 #include "stm32f4xx_hal.h"
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
-
 
 #define INIT 1
 #define ENCRYPT 2
@@ -44,3 +45,4 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim);
 int write_flash(Key *new_value);
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart);
 int generate_key();
+size_t encrypt(unsigned char *buff, uint32_t size);

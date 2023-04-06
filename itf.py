@@ -6,9 +6,16 @@ def init_board(tty: str):
     return s
 
 def generate_key(board):
-    s.write(struct.pack("BB", 1, 0))
-    res = s.read(1).decode("utf-8")
+    board.write(struct.pack("BB", 1, 0))
+    res = board.read(1).decode("utf-8")
     return res[0] == '0'
+
+def aes_encrypt(board, infile, outfile):
+    msg = b'abcdefghijklmnopqrstuvwxyz'
+    board.write(struct.pack("BB", 2, len(msg)))
+    board.write(msg)
+    print(board.read(len(msg) + (16 - (len(msg) % 16))))
+    return True
 
 if __name__ == "__main__":
     s = init_board("/dev/ttyACM0")
@@ -16,4 +23,5 @@ if __name__ == "__main__":
     ## s.write(b'hoooo')
     ## while True:
     ##     print(s.read(5))
-    print(generate_key(s))
+    # generate_key(s)
+    aes_encrypt(s, None, None)
