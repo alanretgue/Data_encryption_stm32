@@ -7,8 +7,8 @@ def init_board(tty: str):
 
 def generate_key(board):
     s.write(struct.pack("BB", 1, 0))
-    print(s.read(32))
-    return True
+    res = s.read(1).decode("utf-8")
+    return res[0] == '0'
 
 if __name__ == "__main__":
     s = init_board("/dev/ttyACM0")
@@ -16,4 +16,4 @@ if __name__ == "__main__":
     ## s.write(b'hoooo')
     ## while True:
     ##     print(s.read(5))
-    generate_key(s)
+    print(generate_key(s))

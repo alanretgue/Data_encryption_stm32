@@ -38,7 +38,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
         HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6, GPIO_PIN_SET);
 
         state = 1;
-        HAL_UART_Receive_IT(&huart2, &header, 2);
+        HAL_UART_Receive_IT(&huart2, (uint8_t *)&header, 2);
     }
 }
 
@@ -90,14 +90,14 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
             HAL_UART_Receive_DMA(&huart2, recieved_data /* + idx *  BUFFER_SIZE*/, size);
         } else if ((header.flags & INIT) == 1) {
             unsigned char res = '0' + (unsigned char)generate_key();
-            HAL_UART_Transmit_DMA(&huart2, (uint8_t *)key.value, 32);
+            HAL_UART_Transmit_DMA(&huart2, &res, 1);
             enable = 0;
         } else {
             HAL_UART_Transmit_DMA(&huart2, recieved_data, size);
             state = 1;
             if ((header.flags & END) == 0) {
                 // recv = 1;
-                HAL_UART_Receive_IT(&huart2, &header, 2);
+                HAL_UART_Receive_IT(&huart2, (uint8_t *)&header, 2);
             }
             else {
                 enable = 0;
