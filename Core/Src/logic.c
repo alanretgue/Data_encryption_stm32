@@ -104,6 +104,15 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
         } else if ((header.flags & ENCRYPT)) {
             size_t full_size = encrypt(recieved_data, header.length);
             HAL_UART_Transmit_DMA(&huart2, output, full_size);
+            if (header.flags & END) {
+                mbedtls_aes_free(&ctx);
+            }
+        } else if ((header.flags & DECRYPT)) {
+            size_t real_size = encrypt(recieved_data, header.length);
+            HAL_UART_Transmit_DMA(&huart2, output, real_size);
+            if (header.flags & END) {
+                mbedtls_aes_free(&ctx);
+            }
         } else {
             HAL_UART_Transmit_DMA(&huart2, recieved_data, size);
             state = 1;
@@ -179,4 +188,14 @@ size_t encrypt(unsigned char *buff, uint32_t size) {
 
     mbedtls_aes_crypt_cbc(&ctx, MBEDTLS_AES_ENCRYPT, final_size, iv, buff, output);
     return final_size;
+}
+
+size_t decrypt(unsigned char *buff, uint32_t size) {
+    mbedtls_aes_setkey_dec(&ctx, key.value, 256);
+    unsigned char iv[16] = { 0 };
+
+    mbedtls_aes_crypt_cbc(&ctx, MBEDTLS_AES_DECRYPT, size, iv, buff, output);
+    size_t removed_size = 16 - output[size - 1];
+
+    return size - removed_size;
 }
