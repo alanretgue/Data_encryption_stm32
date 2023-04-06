@@ -71,7 +71,10 @@ int write_flash(Key *new_value) {
         return ERROR_WRITE_KEY;
     }
 
-    HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, Address, (unsigned char*)new_value);
+    HAL_FLASH_Program(FLASH_TYPEPROGRAM_BYTE, Address, new_value->generated);
+    for (int i = 0; i < 32; i++) {
+        HAL_FLASH_Program(FLASH_TYPEPROGRAM_BYTE, Address + 1 + i, new_value->value[i]);
+    }
     HAL_FLASH_Lock();
     return SUCCESS;
 }
@@ -87,13 +90,17 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
             HAL_UART_Receive_DMA(&huart2, recieved_data /* + idx *  BUFFER_SIZE*/, size);
         } else if ((header.flags & INIT) == 1) {
             unsigned char res = '0' + (unsigned char)generate_key();
-            HAL_UART_Transmit_DMA(&huart2, &res, 33);
+            HAL_UART_Transmit_DMA(&huart2, (uint8_t *)key.value, 32);
+            enable = 0;
         } else {
             HAL_UART_Transmit_DMA(&huart2, recieved_data, size);
+            state = 1;
             if ((header.flags & END) == 0) {
-                state = 1;
                 // recv = 1;
                 HAL_UART_Receive_IT(&huart2, &header, 2);
+            }
+            else {
+                enable = 0;
             }
         }
     }
@@ -109,7 +116,8 @@ int custom_poll( void *data,
     int32_t val1 = HAL_ADC_GetValue(&hadc1) >> 2;
     int32_t val2 = HAL_GetTick();
     int32_t val3 = millis;
-    return (val1 ^ val2) | (val3 << 3);
+    *output = (val1 ^ val2) | (val3 << 3);
+    return 0;
 }
 
 int generate_key() {
@@ -120,7 +128,7 @@ int generate_key() {
     mbedtls_ctr_drbg_context ctr_drbg;
     mbedtls_entropy_context entropy;
     Key tmp_key = {
-        .generated = 0,
+        .generated = 1,
         .value = { 0 },
     };
 
@@ -130,7 +138,7 @@ int generate_key() {
     mbedtls_entropy_init(&entropy);
     mbedtls_ctr_drbg_init(&ctr_drbg);
 
-    mbedtls_entropy_add_source(&entropy, custom_poll, NULL, 1, MBEDTLS_ENTROPY_SOURCE_STRONG);
+    mbedtls_entropy_add_source(&entropy, custom_poll, NULL, 4, MBEDTLS_ENTROPY_SOURCE_STRONG);
 
     if((ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy,
                     (unsigned char *) pers, strlen(pers))) != 0) {
@@ -141,10 +149,7 @@ int generate_key() {
         return ERROR_RANDOM;
     }
 
-    // return write_flash(&tmp_key);
-
-    HAL_UART_Transmit_DMA(&huart2, (uint8_t *)(tmp_key.value), sizeof(Key));
-    return SUCCESS;
+    return write_flash(&tmp_key);
 }
 
 void SYSTICK_Handler(void) { millis++; }

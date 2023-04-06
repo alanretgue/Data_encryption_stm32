@@ -27,7 +27,7 @@ typedef struct {
 } Header;
 
 typedef struct {
-    char generated;
+    uint8_t generated;
     unsigned char value[32];
 } Key;
 
