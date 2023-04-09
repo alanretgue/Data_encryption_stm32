@@ -8,12 +8,6 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#define FREQ 4
-#define TIME 15
-#define PADDING_SIZE 16
-#define BUFFER_SIZE 256
-#define FULL_BUFFER_SIZE BUFFER_SIZE + PADDING_SIZE
-
 const int ENABLE_END = FREQ * TIME;
 int enable = 0;
 uint32_t timer_count = 0;
@@ -27,11 +21,58 @@ uint64_t millis = 0;
 
 uint8_t idx = 0;
 uint8_t state = 1;
-uint8_t size = 1;
-uint8_t recv = 1;
 unsigned char recieved_data[2 * (FULL_BUFFER_SIZE)] = { 'a' };
 unsigned char output[FULL_BUFFER_SIZE] = { 0 };
 mbedtls_aes_context ctx;
+
+
+size_t michel(){
+
+    char unsigned buff [256] = {0};
+    buff[0] = 'a';
+    buff[1] = 'b';
+    buff[2] = 'c';
+    buff[3] = 'd';
+    buff[4] = 'e';
+    buff[5] = 'f';
+    size_t size = 6;
+    char unsigned res[258] = {0};
+    mbedtls_aes_setkey_enc(&ctx, key.value, 256);
+    unsigned char iv[16] = { 0 };
+
+    if (header.flags & END) {
+        res[1] = 16 - (size % 16);
+        for(size_t i = 0; i < res[1]; i++) {
+            buff[size + i] = (unsigned char) res[1];
+        }
+    } else {
+        res[1] = 0;
+    }
+
+    size_t final_size = size + res[1];
+
+    mbedtls_aes_crypt_cbc(&ctx, MBEDTLS_AES_ENCRYPT, final_size, iv, buff, res + 2);
+
+    mbedtls_aes_free(&ctx);
+    mbedtls_aes_init(&ctx);
+
+    mbedtls_aes_setkey_dec(&ctx, key.value, 256);
+    unsigned char iv2[16] = { 0 };
+
+    unsigned char output[256] = {0};
+
+    size = final_size;
+
+    mbedtls_aes_crypt_cbc(&ctx, MBEDTLS_AES_DECRYPT, size, iv2, res + 2, output);
+
+    if (header.flags & END)
+        res[1] = 16 - res[2 + size - 1];
+    else
+        res[1] = 0;
+    return size - res[1];
+}
+
+
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
     if (!enable) {
@@ -41,11 +82,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
         HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6, GPIO_PIN_SET);
 
         state = 1;
-        HAL_UART_Receive_IT(&huart2, (uint8_t *)&header, 2);
-        if (key.generated) {
-            mbedtls_aes_init(&ctx);
-            // mbedtls_aes_setkey_dec(&ctx, key.value, 256);
-        }
+        mbedtls_aes_init(&ctx);
     }
 }
 
@@ -93,37 +130,42 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
         if (state && (header.flags & INIT) == 0) {
             state = !state;
             idx = !idx;
-            size = header.length;
-            HAL_UART_Receive_DMA(&huart2, recieved_data + idx *  FULL_BUFFER_SIZE, size);
+            HAL_UART_Receive_DMA(&huart2, recieved_data + idx *  FULL_BUFFER_SIZE, header.length);
 
-        } else if ((header.flags & INIT) == 1) {
-            unsigned char res = '0' + (unsigned char)generate_key();
-            HAL_UART_Transmit_DMA(&huart2, &res, 1);
-
-            enable = 0;
-        } else if ((header.flags & ENCRYPT)) {
-            size_t full_size = encrypt(recieved_data, header.length);
-            HAL_UART_Transmit_DMA(&huart2, output, full_size);
-            if (header.flags & END) {
-                mbedtls_aes_free(&ctx);
-            }
-        } else if ((header.flags & DECRYPT)) {
-            size_t real_size = encrypt(recieved_data, header.length);
-            HAL_UART_Transmit_DMA(&huart2, output, real_size);
-            if (header.flags & END) {
-                mbedtls_aes_free(&ctx);
-            }
         } else {
-            HAL_UART_Transmit_DMA(&huart2, recieved_data, size);
-            state = 1;
-            if ((header.flags & END) == 0) {
-                // recv = 1;
-                HAL_UART_Receive_IT(&huart2, (uint8_t *)&header, 2);
+            /**
+             * res[0] => error code
+             * res[1] => padding
+             * res + 2 => message
+             */
+            unsigned char res[258] = {0};
+            res[0] = '0';
+            if ((header.flags & INIT) == 1) {
+                unsigned char res = '0' + (unsigned char)generate_key();
+                HAL_UART_Transmit_DMA(&huart2, &res, 1);
+
+            } else if ((header.flags & ENCRYPT)) {
+                //michel();
+                unsigned char size = encrypt(recieved_data, header.length, res);
+                HAL_UART_Transmit_DMA(&huart2, (uint8_t *)res, size + 2);
+
+            } else if ((header.flags & DECRYPT)) {
+                unsigned char size = decrypt(recieved_data, header.length, res);
+                HAL_UART_Transmit_DMA(&huart2, (uint8_t *)res, size + 2);
             }
-            else {
+
+            state = 1;
+            HAL_UART_Receive_IT(&huart2, (uint8_t *)&header, 2);
+
+            if (header.flags & END) {
+                mbedtls_aes_free(&ctx);
                 enable = 0;
             }
         }
+    } else {
+        // error message
+        HAL_UART_Transmit_DMA(&huart2, (uint8_t *)"1", 1);
+        HAL_UART_Receive_IT(&huart2, (uint8_t *)&header, 2);
     }
 }
 
@@ -173,29 +215,41 @@ int generate_key() {
     return write_flash(&tmp_key);
 }
 
+// Used to create "random"
 void SYSTICK_Handler(void) { millis++; }
 
-size_t encrypt(unsigned char *buff, uint32_t size) {
+size_t encrypt(unsigned char *buff, uint32_t size, unsigned char *res) {
+    mbedtls_aes_init(&ctx);
     mbedtls_aes_setkey_enc(&ctx, key.value, 256);
     unsigned char iv[16] = { 0 };
 
-    size_t padding_len = 16 - (size % 16);
-    for(size_t i = 0; i < padding_len; i++) {
-        buff[size + i] = (unsigned char) padding_len;
+    if (header.flags & END) {
+        res[1] = 16 - (size % 16);
+        for(size_t i = 0; i < res[1]; i++) {
+            buff[size + i] = (unsigned char) res[1];
+        }
+    } else {
+        res[1] = 0;
     }
 
-    size_t final_size = size + padding_len;
+    size_t final_size = size + res[1];
 
-    mbedtls_aes_crypt_cbc(&ctx, MBEDTLS_AES_ENCRYPT, final_size, iv, buff, output);
+    mbedtls_aes_crypt_cbc(&ctx, MBEDTLS_AES_ENCRYPT, final_size, iv, buff, res + 2);
+    mbedtls_aes_free(&ctx);
     return final_size;
 }
 
-size_t decrypt(unsigned char *buff, uint32_t size) {
+size_t decrypt(unsigned char *buff, uint32_t size, unsigned char *res) {
+    mbedtls_aes_init(&ctx);
     mbedtls_aes_setkey_dec(&ctx, key.value, 256);
     unsigned char iv[16] = { 0 };
 
-    mbedtls_aes_crypt_cbc(&ctx, MBEDTLS_AES_DECRYPT, size, iv, buff, output);
-    size_t removed_size = 16 - output[size - 1];
-
-    return size - removed_size;
+    mbedtls_aes_crypt_cbc(&ctx, MBEDTLS_AES_DECRYPT, size, iv, buff, res + 2);
+    if (header.flags & END)
+        res[1] = 16 - res[2 + size - 1];
+    else
+        res[1] = 0;
+    mbedtls_aes_free(&ctx);
+    return size - res[1];
 }
+

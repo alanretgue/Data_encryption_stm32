@@ -116,6 +116,7 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  HAL_UART_Receive_IT(&huart2, (uint8_t *)&header, 2);
   // printf("hello it's %lu at %x\r\n", key, (uint32_t)&key);
   while (1)
   {
