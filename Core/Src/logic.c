@@ -20,6 +20,7 @@ Header header = {
 uint64_t millis = 0;
 
 uint8_t idx = 0;
+uint8_t set_key = 0;
 uint8_t state = 1;
 unsigned char recieved_data[2 * (FULL_BUFFER_SIZE)] = { 'a' };
 unsigned char output[FULL_BUFFER_SIZE] = { 0 };
@@ -82,6 +83,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
         HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6, GPIO_PIN_SET);
 
         state = 1;
+        mbedtls_aes_free(&ctx);
         mbedtls_aes_init(&ctx);
     }
 }
@@ -140,32 +142,34 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
              */
             unsigned char res[258] = {0};
             res[0] = '0';
+            res[1] = 0;
             if ((header.flags & INIT) == 1) {
                 unsigned char res = '0' + (unsigned char)generate_key();
                 HAL_UART_Transmit_DMA(&huart2, &res, 1);
 
             } else if ((header.flags & ENCRYPT)) {
                 //michel();
-                unsigned char size = encrypt(recieved_data, header.length, res);
+                size_t size = encrypt(recieved_data, header.length + 1, res);
                 HAL_UART_Transmit_DMA(&huart2, (uint8_t *)res, size + 2);
 
             } else if ((header.flags & DECRYPT)) {
-                unsigned char size = decrypt(recieved_data, header.length, res);
+                size_t size = decrypt(recieved_data, header.length + 1, res);
                 HAL_UART_Transmit_DMA(&huart2, (uint8_t *)res, size + 2);
             }
 
             state = 1;
-            HAL_UART_Receive_IT(&huart2, (uint8_t *)&header, 2);
 
             if (header.flags & END) {
                 mbedtls_aes_free(&ctx);
+                set_key = 0;
                 enable = 0;
             }
+            HAL_UART_Receive_DMA(&huart2, (uint8_t *)&header, 2);
         }
     } else {
         // error message
         HAL_UART_Transmit_DMA(&huart2, (uint8_t *)"1", 1);
-        HAL_UART_Receive_IT(&huart2, (uint8_t *)&header, 2);
+        HAL_UART_Receive_DMA(&huart2, (uint8_t *)&header, 2);
     }
 }
 
@@ -219,7 +223,6 @@ int generate_key() {
 void SYSTICK_Handler(void) { millis++; }
 
 size_t encrypt(unsigned char *buff, uint32_t size, unsigned char *res) {
-    mbedtls_aes_init(&ctx);
     mbedtls_aes_setkey_enc(&ctx, key.value, 256);
     unsigned char iv[16] = { 0 };
 
@@ -235,12 +238,10 @@ size_t encrypt(unsigned char *buff, uint32_t size, unsigned char *res) {
     size_t final_size = size + res[1];
 
     mbedtls_aes_crypt_cbc(&ctx, MBEDTLS_AES_ENCRYPT, final_size, iv, buff, res + 2);
-    mbedtls_aes_free(&ctx);
     return final_size;
 }
 
 size_t decrypt(unsigned char *buff, uint32_t size, unsigned char *res) {
-    mbedtls_aes_init(&ctx);
     mbedtls_aes_setkey_dec(&ctx, key.value, 256);
     unsigned char iv[16] = { 0 };
 
@@ -249,7 +250,6 @@ size_t decrypt(unsigned char *buff, uint32_t size, unsigned char *res) {
         res[1] = res[2 + size - 1];
     else
         res[1] = 0;
-    mbedtls_aes_free(&ctx);
     return size - res[1];
 }
 
