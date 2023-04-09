@@ -224,7 +224,7 @@ void SYSTICK_Handler(void) { millis++; }
 
 size_t encrypt(unsigned char *buff, uint32_t size, unsigned char *res) {
     mbedtls_aes_setkey_enc(&ctx, key.value, 256);
-    unsigned char iv[16] = { 0 };
+    unsigned char iv[16] = { 255 };
 
     if (header.flags & END) {
         res[1] = 16 - (size % 16);
@@ -243,7 +243,7 @@ size_t encrypt(unsigned char *buff, uint32_t size, unsigned char *res) {
 
 size_t decrypt(unsigned char *buff, uint32_t size, unsigned char *res) {
     mbedtls_aes_setkey_dec(&ctx, key.value, 256);
-    unsigned char iv[16] = { 0 };
+    unsigned char iv[16] = { 255 };
 
     mbedtls_aes_crypt_cbc(&ctx, MBEDTLS_AES_DECRYPT, size, iv, buff, res + 2);
     if (header.flags & END)
