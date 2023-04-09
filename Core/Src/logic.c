@@ -130,7 +130,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
         if (state && (header.flags & INIT) == 0) {
             state = !state;
             idx = !idx;
-            HAL_UART_Receive_DMA(&huart2, recieved_data + idx *  FULL_BUFFER_SIZE, header.length);
+            HAL_UART_Receive_DMA(&huart2, recieved_data, header.length);
 
         } else {
             /**
@@ -246,7 +246,7 @@ size_t decrypt(unsigned char *buff, uint32_t size, unsigned char *res) {
 
     mbedtls_aes_crypt_cbc(&ctx, MBEDTLS_AES_DECRYPT, size, iv, buff, res + 2);
     if (header.flags & END)
-        res[1] = 16 - res[2 + size - 1];
+        res[1] = res[2 + size - 1];
     else
         res[1] = 0;
     mbedtls_aes_free(&ctx);
