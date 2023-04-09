@@ -108,7 +108,9 @@ def aes_decrypt(board, infile, outfile):
     if error == '1':
         return False
     padding = board.read(1) ## should be 0
-    res += board.read(len(x[-1]) - int.from_bytes(padding, "big"))
+    print(padding)
+    res += board.read(len(x[-1]) - int.from_bytes(padding, "big")).decode("utf-8")
+    print(res)
     
     # for i in range(256, len(txt), 256):
     #     msg = txt[i - 256 : i]
