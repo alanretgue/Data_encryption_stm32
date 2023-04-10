@@ -205,13 +205,13 @@ int generate_key() {
     mbedtls_entropy_init(&entropy);
     mbedtls_ctr_drbg_init(&ctr_drbg);
 
-    /* mbedtls_entropy_add_source(&entropy, custom_poll, NULL, 1, MBEDTLS_ENTROPY_SOURCE_STRONG);
+    mbedtls_entropy_add_source(&entropy, custom_poll, NULL, 1, MBEDTLS_ENTROPY_SOURCE_STRONG);
 
     if((ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy,
                     (unsigned char *) pers, strlen(pers))) != 0) {
         return ERROR_SEED;
     }
-    */
+
     if((ret = mbedtls_ctr_drbg_random(&ctr_drbg, tmp_key.value, 32)) != 0) {
         return ERROR_RANDOM;
     }
