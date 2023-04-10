@@ -132,7 +132,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
         if (state && (header.flags & INIT) == 0) {
             state = !state;
             idx = !idx;
-            HAL_UART_Receive_DMA(&huart2, recieved_data, header.length);
+            HAL_UART_Receive_DMA(&huart2, recieved_data, header.length + 1);
 
         } else {
             /**
@@ -205,13 +205,13 @@ int generate_key() {
     mbedtls_entropy_init(&entropy);
     mbedtls_ctr_drbg_init(&ctr_drbg);
 
-    mbedtls_entropy_add_source(&entropy, custom_poll, NULL, 4, MBEDTLS_ENTROPY_SOURCE_STRONG);
+    /* mbedtls_entropy_add_source(&entropy, custom_poll, NULL, 1, MBEDTLS_ENTROPY_SOURCE_STRONG);
 
     if((ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy,
                     (unsigned char *) pers, strlen(pers))) != 0) {
         return ERROR_SEED;
     }
-
+    */
     if((ret = mbedtls_ctr_drbg_random(&ctr_drbg, tmp_key.value, 32)) != 0) {
         return ERROR_RANDOM;
     }
@@ -223,8 +223,9 @@ int generate_key() {
 void SYSTICK_Handler(void) { millis++; }
 
 size_t encrypt(unsigned char *buff, uint32_t size, unsigned char *res) {
+    mbedtls_aes_init(&ctx);
     mbedtls_aes_setkey_enc(&ctx, key.value, 256);
-    unsigned char iv[16] = { 32 };
+    unsigned char iv[16] = { -1 };
 
     if (header.flags & END) {
         res[1] = 16 - (size % 16);
@@ -238,18 +239,21 @@ size_t encrypt(unsigned char *buff, uint32_t size, unsigned char *res) {
     size_t final_size = size + res[1];
 
     mbedtls_aes_crypt_cbc(&ctx, MBEDTLS_AES_ENCRYPT, final_size, iv, buff, res + 2);
+    mbedtls_aes_free(&ctx);
     return final_size;
 }
 
 size_t decrypt(unsigned char *buff, uint32_t size, unsigned char *res) {
+    mbedtls_aes_init(&ctx);
     mbedtls_aes_setkey_dec(&ctx, key.value, 256);
-    unsigned char iv[16] = { 32 };
+    unsigned char iv[16] = { -1 };
 
     mbedtls_aes_crypt_cbc(&ctx, MBEDTLS_AES_DECRYPT, size, iv, buff, res + 2);
     if (header.flags & END)
         res[1] = (res + 2)[size - 1];
     else
         res[1] = 0;
+    mbedtls_aes_free(&ctx);
     return size - res[1];
 }
 
