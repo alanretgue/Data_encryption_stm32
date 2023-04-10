@@ -223,7 +223,6 @@ int generate_key() {
 void SYSTICK_Handler(void) { millis++; }
 
 size_t encrypt(unsigned char *buff, uint32_t size, unsigned char *res) {
-    mbedtls_aes_init(&ctx);
     mbedtls_aes_setkey_enc(&ctx, key.value, 256);
     unsigned char iv[16] = { -1 };
 
@@ -239,12 +238,10 @@ size_t encrypt(unsigned char *buff, uint32_t size, unsigned char *res) {
     size_t final_size = size + res[1];
 
     mbedtls_aes_crypt_cbc(&ctx, MBEDTLS_AES_ENCRYPT, final_size, iv, buff, res + 2);
-    mbedtls_aes_free(&ctx);
     return final_size;
 }
 
 size_t decrypt(unsigned char *buff, uint32_t size, unsigned char *res) {
-    mbedtls_aes_init(&ctx);
     mbedtls_aes_setkey_dec(&ctx, key.value, 256);
     unsigned char iv[16] = { -1 };
 
@@ -253,7 +250,7 @@ size_t decrypt(unsigned char *buff, uint32_t size, unsigned char *res) {
         res[1] = (res + 2)[size - 1];
     else
         res[1] = 0;
-    mbedtls_aes_free(&ctx);
+
     return size - res[1];
 }
 
