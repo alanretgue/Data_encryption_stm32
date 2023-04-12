@@ -34,12 +34,10 @@ def aes_encrypt(board, infile, outfile):
         return True
 
     x = [ txt[i:i+256] for i in range(0, len(txt), 256) ]
-    print(x)
 
     res = b''
 
     for s in x[:-1]:
-        print("in for")
         board.write(struct.pack("BB", flag, len(s) - 1))
         board.write(s)
 
@@ -53,7 +51,6 @@ def aes_encrypt(board, infile, outfile):
         # concatenate result
         res += board.read(256 + int.from_bytes(padding, "big"))
 
-    print("out for")
     board.write(struct.pack("BB", flag + flag_end, len(x[-1]) - 1))
     board.write(x[-1])
 
