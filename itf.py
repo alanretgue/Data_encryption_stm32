@@ -17,10 +17,18 @@ def aes_encrypt(board, infile, outfile):
     txt = f.read().encode()
     f.close()
 
-    x = [ txt[i:i+256] for i in range(0, len(txt), 256) ]
     ## FLAGS used in header
     flag = 2
     flag_end = 8
+
+    if len(txt) == 0:
+        o = open(outfile, "wb")
+        o.close()
+        board.write(struct.pack("BB", flag_end, 0))
+        board.write(b'0')
+        return True
+
+    x = [ txt[i:i+256] for i in range(0, len(txt), 256) ]
 
     res = b''
 
@@ -51,10 +59,18 @@ def aes_decrypt(board, infile, outfile):
     txt = f.read()
     f.close()
 
-    x = [ txt[i:i+256] for i in range(0, len(txt), 256) ]
     ## FLAGS used in header
     flag = 4
     flag_end = 8
+
+    if len(txt) == 0:
+        o = open(outfile, "w")
+        o.close()
+        board.write(struct.pack("BB", flag_end, 0))
+        board.write(b'0')
+        return True
+
+    x = [ txt[i:i+256] for i in range(0, len(txt), 256) ]
 
     res = ""
 
