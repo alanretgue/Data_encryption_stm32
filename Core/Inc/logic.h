@@ -25,8 +25,10 @@
 #define FREQ 4
 #define TIME 15
 #define PADDING_SIZE 16
+#define HEADER_SIZE 2
 #define BUFFER_SIZE 256
 #define FULL_BUFFER_SIZE BUFFER_SIZE + PADDING_SIZE
+#define RESPONSE_SIZE FULL_BUFFER_SIZE + HEADER_SIZE
 
 typedef struct {
     char flags;

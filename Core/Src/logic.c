@@ -128,19 +128,19 @@ int write_flash(Key *new_value) {
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 
     // HAL_UART_Receive_DMA(&huart1, &recieved_data[16 * idx], 16);
-    if (enable) {
-        if (state && (header.flags & INIT) == 0) {
-            state = !state;
-            idx = !idx;
-            HAL_UART_Receive_DMA(&huart2, recieved_data, header.length + 1);
+    if (state && (header.flags & INIT) == 0) {
+        state = !state;
+        idx = !idx;
+        HAL_UART_Receive_DMA(&huart2, recieved_data, header.length + 1);
 
-        } else {
+    } else {
+        if (enable) {
             /**
              * res[0] => error code
              * res[1] => padding
              * res + 2 => message
              */
-            unsigned char res[258] = {0};
+            unsigned char res[RESPONSE_SIZE] = {0};
             res[0] = '0';
             res[1] = 0;
             if ((header.flags & INIT) == 1) {
@@ -166,15 +166,16 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
             }
             HAL_UART_Receive_DMA(&huart2, (uint8_t *)&header, 2);
         }
-    } else {
-        // error message
-        HAL_UART_Transmit_DMA(&huart2, (uint8_t *)"1", 1);
-        HAL_UART_Receive_DMA(&huart2, (uint8_t *)&header, 2);
+        else {
+            // error message
+            HAL_UART_Transmit_DMA(&huart2, (uint8_t *)"1", 1);
+            HAL_UART_Receive_DMA(&huart2, (uint8_t *)&header, 2);
+        }
     }
 }
 
 int custom_poll( void *data,
-                    unsigned char *output, size_t len, size_t *olen )
+        unsigned char *output, size_t len, size_t *olen )
 {
     ((void) data);
     ((void) output);
